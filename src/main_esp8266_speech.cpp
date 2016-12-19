@@ -1,3 +1,5 @@
+// curl -s -k -H "Content-Type: application/json" -H "Authorization: Bearer ya29.El-uAxSDU5R-wc98mfEQDI59PZRcs344cVHA4Rl8O3P2GtSIBDuwR9hwPWdrCJspAgtN9z_el8HECjfbn1KITXQcgyTzDL4uTV_rzUwlG2n8VlHWZnN9IAaNzk1bt4yLJg" https://speech.googleapis.com/v1beta1/speech:syncrecognize -d @sync-request2.json
+
 #include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <WiFiClientSecure.h>
@@ -5,6 +7,8 @@
 #include <SPI.h>
 #include <ExBase64.h>
 #include <NoFlashSpi.h>
+
+
 
 // #define SEND_DUMMY true
 
@@ -84,7 +88,7 @@ void setup() {
     pinMode(ESP8266_LED, OUTPUT);
     send_buffer = &buffer_a[0];
     write_buffer = &buffer_b[0];
-    Serial.setDebugOutput(true);
+
     SerialKeyWait();
 
     SetUpADC_SPI();
@@ -128,16 +132,15 @@ void loop() {
 
     }
 
-
     timer1_disable();
     Serial.println("done");
 
     digitalWrite(ESP8266_LED, HIGH); // Write LED high/low
 
-    yield();
     ReadAndCloseSpeechAPI();
 
     uint8_t ledStatus;
+
     while (false) {
         digitalWrite(ESP8266_LED, ledStatus); // Write LED high/low
         ledStatus = (ledStatus == HIGH) ? LOW : HIGH;
@@ -167,27 +170,31 @@ void ConnectToSpeechAPI() {
 
     if (client.connect(speech_server, 443)) {
 
+
         String content = ("{\n"
-                "  \"config\": {\n"
-                "    \"encoding\":\"MULAW\",\n"
-                "    \"sampleRate\":8000,\n"
-                "    \"languageCode\":\"de-de\"\n"
+                "  'config': {\n"
+                "    'encoding':'MULAW',\n"
+                "    'sampleRate':8000,\n"
+                "    'languageCode':'de-de'\n"
                 "  },\n"
-                "  \"audio\": {\n"
-                "    \"content\": \"");
+                "  'audio': {\n"
+                "    'content': '");
 
-        u_int clength = content.length() + (SEND_BUFFER_SIZE * BUFFER_LOOPS) + 3;
 
-        client.println("POST /v1beta1/speech:syncrecognize?key=your key here HTTP/1.1");
+        u_int clength = content.length() + (SEND_BUFFER_SIZE * BUFFER_LOOPS) + 8;
+//          u_int clength = content.length()+3;
+
+        client.println("POST /v1beta1/speech:syncrecognize?key=AIzaSyC0fpPOkS7m7gnijCFMMJ4hb-WshIG-1i0 HTTP/1.1");
         client.println("Host: speech.googleapis.com");
         client.println("Content-Type: application/json");
         client.println("Connection: close");
-        client.print("Content-Length: ");
-        client.println(clength);
+        client.print("Content-Length: "); client.println(clength);
         client.println();
         client.print(content);
+
         digitalWrite(ESP8266_LED, HIGH);
         Serial.println("ok");
+
 
     } else {
         Serial.println("Error -  no connection to Google");
@@ -199,26 +206,39 @@ void ConnectToSpeechAPI() {
 
 void ReadAndCloseSpeechAPI() {
 #ifndef SEND_DUMMY
-    client.print("\"}}");
-    client.println();
 
-    Serial.println("WAIT for SpeechApiAnswer:");
+    String content_closure = ("'\n"
+                      "  }\n"
+                      "}\n");
 
-    while (true) {
-        // from the server, read them and print them:
-        while (client.available()) {
-            char c = client.read();
-            Serial.write(c);
-            yield();
-        }
+    client.println(content_closure);
+    Serial.println("OK");
 
-        // if the server's disconnected, stop the client:
-        if (!client.connected()) {
+    Serial.println("request sent,waiting for answer");
+    unsigned long timeout = millis();
+    while (client.available() == 0) {
+        Serial.print(".");
+        delay(200);
+
+        if (millis() - timeout > 8000) {
+            Serial.println(">>> Client Timeout !");
             client.stop();
-            break;
+            return;
         }
-
     }
+
+    Serial.print("******* Translation after ms:");Serial.println(millis()-timeout);
+
+    // Read all the lines of the reply from server and print them to Serial
+    while(client.available()){
+        String line = client.readStringUntil('\r');
+        Serial.println(line);
+    }
+
+    Serial.println("******* Translation end ******* ");
+
+    client.stop();
+
     digitalWrite(ESP8266_LED, LOW); // Write LED high/low
     Serial.print("DONE with loops:");Serial.println(wifi_loop_count);
 
@@ -247,19 +267,23 @@ void SetupWifi() {
     WiFi.mode(WIFI_STA);
     WiFi.begin(WiFiSSID, WiFiPSK);
 
-    while (true) {
-        wl_status_t wifi_status = WiFi.status();
-        if (wifi_status == WL_CONNECTED) break;
-        digitalWrite(ESP8266_LED, ledStatus); // Write LED high/low
-        ledStatus = (ledStatus == HIGH) ? LOW : HIGH;
+    digitalWrite(ESP8266_LED, HIGH); // Write LED high/low
+    while (WiFi.status() != WL_CONNECTED) {
+        delay(300);
         Serial.print(".");
-        delay(100);
     }
+    digitalWrite(ESP8266_LED, LOW); // Write LED high/low
+
     Serial.println("ok");
+    Serial.println("IP address: ");
+    Serial.println(WiFi.localIP());
 }
 
 void SerialKeyWait() {// Wait for Key
     Serial.begin(115200);
+//    Serial.setDebugOutput(true);
+
+
     Serial.println("Hit a key to start...");
     Serial.flush();
 
