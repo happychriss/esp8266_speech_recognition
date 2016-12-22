@@ -184,7 +184,7 @@ void ConnectToSpeechAPI() {
         u_int clength = content.length() + (SEND_BUFFER_SIZE * BUFFER_LOOPS) + 8;
 //          u_int clength = content.length()+3;
 
-        client.println("POST /v1beta1/speech:syncrecognize?key=AIzaSyC0fpPOkS7m7gnijCFMMJ4hb-WshIG-1i0 HTTP/1.1");
+        client.println("POST /v1beta1/speech:syncrecognize?key=ADD YOUR KEY HERE HTTP/1.1");
         client.println("Host: speech.googleapis.com");
         client.println("Content-Type: application/json");
         client.println("Connection: close");
@@ -212,6 +212,7 @@ void ReadAndCloseSpeechAPI() {
                       "}\n");
 
     client.println(content_closure);
+    client.println();
     Serial.println("OK");
 
     Serial.println("request sent,waiting for answer");
@@ -220,7 +221,7 @@ void ReadAndCloseSpeechAPI() {
         Serial.print(".");
         delay(200);
 
-        if (millis() - timeout > 8000) {
+        if (millis() - timeout > 10000) {
             Serial.println(">>> Client Timeout !");
             client.stop();
             return;
